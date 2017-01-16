@@ -28,72 +28,60 @@ namespace LanguageTranslator
         private static Menu _menu;
         private static bool _loaded;
         private static bool _ready;
-        private static Dictionary<string, Dictionary<Language, Dictionary<int, string>>> Translations = new Dictionary<string, Dictionary<Language, Dictionary<int, string>>>();
+        private static Dictionary<string, Dictionary<Language, Dictionary<int, string>>> _translations = new Dictionary<string, Dictionary<Language, Dictionary<int, string>>>();
+
         private static readonly Dictionary<string, Language> CulturesToLanguage = new Dictionary<string, Language>
-        {
-            { "en-US", Language.English },
-            { "en-GB", Language.English },
-            { "es-ES", Language.Spanish },
-            { "fr-FR", Language.French },
-            { "de-DE", Language.German },
-            { "it-IT", Language.Italian },
-            { "pt-BR", Language.Portuguese },
-            { "pt-PT", Language.Portuguese },
-            { "pl-PL", Language.Polish },
-            { "tr-TR", Language.Turkish },
-            { "zh-CHS", Language.Chinese },
-            { "zh-CHT", Language.ChineseTraditional },
-            { "ko-KR", Language.Korean },
-            { "ro-RO", Language.Romanian },
-            { "vi-VN", Language.Vietnamese },
-        };
+                                                                                  {
+                                                                                      {"en-US", Language.English},
+                                                                                      {"en-GB", Language.English},
+                                                                                      {"zh-CHS", Language.ChineseSimplified},
+                                                                                      {"zh-CHT", Language.ChineseTraditional}
+                                                                                  };
+
         private static bool _jsonPathExists;
+
         private static Language CurrentCulture
-        {
-            get { return CulturesToLanguage.ContainsKey(CultureInfo.InstalledUICulture.ToString()) ? CulturesToLanguage[CultureInfo.InstalledUICulture.ToString()] : Language.English; }
-        }
+            => CulturesToLanguage.ContainsKey(CultureInfo.InstalledUICulture.ToString()) ? CulturesToLanguage[CultureInfo.InstalledUICulture.ToString()] : Language.English;
+
 
         private static void Main()
         {
             Loading.OnLoadingComplete += delegate
-            {
-                var time = Game.Time;
-                Game.OnTick += delegate
-                {
-                    if (Game.Time - time >= 2 && time > 0)
-                    {
-                        time = 0;
-                        _programDirectory = Path.Combine(SandboxConfig.DataDirectory, "LanguageTranslator");
-                        if (!Directory.Exists(_programDirectory))
-                        {
-                            Directory.CreateDirectory(_programDirectory);
-                        }
-                        _jsonPath = Path.Combine(_programDirectory, "Translations.json");
-                        _jsonPathExists = File.Exists(_jsonPath);
-                        if (!_jsonPathExists)
-                        {
-                            File.Create(_jsonPath).Close();
-                            DownloadNewJson();
-                        }
-                        else
-                        {
-                            var jsonConvert = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Language, Dictionary<int, string>>>>(File.ReadAllText(_jsonPath));
-                            if (jsonConvert != null)
-                            {
-                                Translations = jsonConvert;
-                            }
-                            DownloadNewJson();
-                            //var webClient = new WebClient { Encoding = Encoding.UTF8 };
-                            //webClient.DownloadStringCompleted += VersionCompleted;
-                            //webClient.DownloadStringAsync(new Uri(VersionUrl, UriKind.Absolute));
-                        }
-                    }
-                    if (_ready)
-                    {
-                        OnLoad();
-                    }
-                };
-            };
+                                         {
+                                             var time = Game.Time;
+                                             Game.OnTick += delegate
+                                                            {
+                                                                if (Game.Time - time >= 2 && time > 0)
+                                                                {
+                                                                    time = 0;
+                                                                    _programDirectory = Path.Combine(SandboxConfig.DataDirectory, "LanguageTranslator");
+                                                                    if (!Directory.Exists(_programDirectory))
+                                                                    {
+                                                                        Directory.CreateDirectory(_programDirectory);
+                                                                    }
+                                                                    _jsonPath = Path.Combine(_programDirectory, "Translations.json");
+                                                                    _jsonPathExists = File.Exists(_jsonPath);
+                                                                    if (!_jsonPathExists)
+                                                                    {
+                                                                        File.Create(_jsonPath).Close();
+                                                                        DownloadNewJson();
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        var jsonConvert = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Language, Dictionary<int, string>>>>(File.ReadAllText(_jsonPath));
+                                                                        if (jsonConvert != null)
+                                                                        {
+                                                                            _translations = jsonConvert;
+                                                                        }
+                                                                        DownloadNewJson();
+                                                                    }
+                                                                }
+                                                                if (_ready)
+                                                                {
+                                                                    OnLoad();
+                                                                }
+                                                            };
+                                         };
         }
 
         private static void VersionCompleted(object sender, DownloadStringCompletedEventArgs args)
@@ -101,6 +89,7 @@ namespace LanguageTranslator
             if (args.Cancelled || args.Error != null)
             {
                 Console.WriteLine("Failed to download internet version.");
+                Chat.Print("Failed to download internet version.");
                 _ready = true;
                 return;
             }
@@ -119,7 +108,7 @@ namespace LanguageTranslator
 
         private static void DownloadNewJson()
         {
-            var webClient = new WebClient { Encoding = Encoding.UTF8 };
+            var webClient = new WebClient {Encoding = Encoding.UTF8};
             webClient.DownloadStringCompleted += JsonDownloaded;
             webClient.DownloadStringAsync(new Uri(JsonUrl, UriKind.Absolute));
         }
@@ -139,7 +128,7 @@ namespace LanguageTranslator
             var jsonConvert = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<Language, Dictionary<int, string>>>>(args.Result);
             if (jsonConvert != null)
             {
-                Translations = jsonConvert;
+                _translations = jsonConvert;
             }
             _ready = true;
         }
@@ -151,22 +140,23 @@ namespace LanguageTranslator
                 _ready = false;
                 _loaded = true;
                 _menu = MainMenu.AddMenu("LanguageTranslator", "LanguageTranslator");
-                var languagesAvailable = Enum.GetValues(typeof (Language)).Cast<Language>().ToArray().Select(i => i.ToString());
-                var currentLanguage = (int) CurrentCulture;
+                var languagesAvailable = Enum.GetValues(typeof(Language)).Cast<Language>().ToArray().Select(i => i.ToString());
+                var currentLanguage = (int)CurrentCulture;
                 var comboBox = _menu.Add("Language", new ComboBox("Language:", languagesAvailable, currentLanguage));
-                comboBox.OnValueChange += delegate(ValueBase<int> sender, ValueBase<int>.ValueChangeArgs args) { Translate((Language) args.OldValue, (Language) args.NewValue); };
+                comboBox.OnValueChange += delegate(ValueBase<int> sender, ValueBase<int>.ValueChangeArgs args) { Translate((Language)args.OldValue, (Language)args.NewValue); };
                 var saveCheckBox = _menu.Add("Save", new CheckBox("Save Current Addons Names", false));
                 saveCheckBox.OnValueChange += delegate(ValueBase<bool> sender, ValueBase<bool>.ValueChangeArgs args)
-                {
-                    if (sender.CurrentValue)
-                    {
-                        Save();
-                        sender.CurrentValue = false;
-                    }
-                };
-                Translate(Language.English, (Language) comboBox.CurrentValue);
+                                              {
+                                                  if (sender.CurrentValue)
+                                                  {
+                                                      Save();
+                                                      sender.CurrentValue = false;
+                                                  }
+                                              };
+                Translate(Language.English, (Language)comboBox.CurrentValue);
             }
         }
+
 
         private static void Translate(Language from, Language to)
         {
@@ -213,9 +203,9 @@ namespace LanguageTranslator
 
         private static string GetTranslationFromDisplayName(string addonId, Language from, Language to, string displayName)
         {
-            if (Translations.ContainsKey(addonId))
+            if (_translations.ContainsKey(addonId))
             {
-                var dictionary = Translations[addonId];
+                var dictionary = _translations[addonId];
                 to = dictionary.ContainsKey(to) ? to : Language.English;
                 if (dictionary.ContainsKey(to))
                 {
@@ -259,19 +249,19 @@ namespace LanguageTranslator
                 {
                     var counter = 0;
                     var addonId = menu.Parent == null ? menu.DisplayName : menu.Parent.DisplayName;
-                    if (!Translations.ContainsKey(addonId))
+                    if (!_translations.ContainsKey(addonId))
                     {
-                        Translations.Add(addonId, new Dictionary<Language, Dictionary<int, string>>());
+                        _translations.Add(addonId, new Dictionary<Language, Dictionary<int, string>>());
                     }
-                    if (Translations[addonId].Count == 0)
+                    if (_translations[addonId].Count == 0)
                     {
-                        Translations[addonId].Add(Language.English, new Dictionary<int, string>());
+                        _translations[addonId].Add(Language.English, new Dictionary<int, string>());
                     }
                     else
                     {
-                        counter = Translations[addonId][Language.English].Count;
+                        counter = _translations[addonId][Language.English].Count;
                     }
-                    var dictionary = Translations[addonId][Language.English];
+                    var dictionary = _translations[addonId][Language.English];
                     var value = menu.DisplayName;
                     if (dictionary.All(i => i.Value != value))
                     {
@@ -336,33 +326,23 @@ namespace LanguageTranslator
                     }
                 }
             }
-            var converted = JsonConvert.SerializeObject(Translations, Formatting.Indented, new JsonSerializerSettings
-            {
-                DefaultValueHandling = DefaultValueHandling.Ignore,
-                NullValueHandling = NullValueHandling.Ignore,
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                ObjectCreationHandling = ObjectCreationHandling.Replace,
-                PreserveReferencesHandling = PreserveReferencesHandling.None,
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
-            });
+            var converted = JsonConvert.SerializeObject(_translations, Formatting.Indented, new JsonSerializerSettings
+                                                                                           {
+                                                                                               DefaultValueHandling = DefaultValueHandling.Ignore,
+                                                                                               NullValueHandling = NullValueHandling.Ignore,
+                                                                                               ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                                                                                               ObjectCreationHandling = ObjectCreationHandling.Replace,
+                                                                                               PreserveReferencesHandling = PreserveReferencesHandling.None,
+                                                                                               ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor
+                                                                                           });
             File.WriteAllText(_jsonPath, converted);
         }
 
         private enum Language
         {
             English,
-            Spanish,
-            French,
-            German,
-            Italian,
-            Portuguese,
-            Polish,
-            Turkish,
-            Chinese,
-            ChineseTraditional,
-            Korean,
-            Romanian,
-            Vietnamese
+            ChineseSimplified,
+            ChineseTraditional
         }
     }
 }
