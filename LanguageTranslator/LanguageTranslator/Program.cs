@@ -35,7 +35,7 @@ namespace LanguageTranslator
                                                                                       {"en-US", Language.English},
                                                                                       {"en-GB", Language.English},
                                                                                       {"zh-CHS", Language.Chinese},
-                                                                                      {"zh-CHT", Language.ChineseTraditional},
+                                                                                      {"zh-CHT", Language.ChineseTraditional}
                                                                                   };
 
         private static bool _jsonPathExists;
